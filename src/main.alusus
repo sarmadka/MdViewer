@@ -1,0 +1,69 @@
+import "Srl/Fs";
+import "Srl/Regex";
+import "Apm";
+Apm.importFile("Alusus/WebPlatform");
+Apm.importFile("Alusus/MarkdownTranslator");
+
+use Srl;
+use WebPlatform;
+
+def mdFilePath: String;
+
+def htmlTemplate:
+    "<html>"
+    "<head>"
+    "    <title>%s</title>"
+    "    <meta charset=\"utf-8\">"
+    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />"
+    "</head>"
+    "<body>"
+    "%s"
+    "</body>"
+    "</html>";
+
+@beEndpoint["GET", "/"]
+func main(conn: ptr[Http.Connection]) {
+    def md: String = Fs.readFile(mdFilePath);
+    def translator: MarkdownTranslator[Regex.Matcher];
+    def html: String = String.format(htmlTemplate, mdFilePath.buf, translator.translate(md).buf);
+
+    Http.print(conn, "HTTP/1.1 200 Ok\r\n");
+    Http.print(conn, "Content-Type: text/html; charset=utf-8l\r\n");
+    Http.print(conn, "Cache-Control: no-cache\r\n");
+    Http.print(conn, "Content-Length: %d\r\n\r\n", html.getLength());
+    Http.print(conn, html.buf);
+}
+
+function addAssetRoute(filename: String) {
+    def count: ArchInt = filename.findLast('/');
+    def path: String;
+    if count == -1 path = "./"
+    else path = filename.slice(0, count + 1);
+    WebPlatform.addAssetRoute(String("/"), path);
+}
+
+function printUsage {
+    Console.print(
+        "Usage:\n"
+        "  alusus src/main.alusus <md_file_path>\n"
+    );
+}
+
+if Process.argCount == 4 {
+    def command: String = Process.args~cnt(Process.argCount - 2)؛
+    mdFilePath = Process.args~cnt(Process.argCount - 1)؛
+    if command == "view" {
+        addAssetRoute(mdFilePath);
+        Console.print("Starting server on port 8020...\nURL: http://localhost:8000/\n");
+        runServer({ "listening_ports", "8000", "static_file_max_age", "0" });
+    } else if command == "convert" {
+        def md: String = Fs.readFile(mdFilePath);
+        def translator: MarkdownTranslator[Regex.Matcher];
+        def html: String = translator.translate(md);
+        Fs.createFile(mdFilePath.replace(".md", ".html"), html.buf, html.getLength());
+    } else {
+        printUsage();
+    }
+} else {
+    printUsage();
+}
