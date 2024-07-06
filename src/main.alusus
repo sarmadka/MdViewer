@@ -45,7 +45,7 @@ function addAssetRoute(filename: String) {
 function printUsage {
     Console.print(
         "Usage:\n"
-        "  alusus src/main.alusus <md_file_path>\n"
+        "  alusus src/main.alusus (view|convert) <md_file_path>\n"
     );
 }
 
